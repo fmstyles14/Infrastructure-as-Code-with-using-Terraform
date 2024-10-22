@@ -9,6 +9,7 @@ variable env_prefix {}
 variable my_ip {}
 variable instance_type{}
 variable public_key_location {}
+variable private_key_location {}
 
 resource "aws_vpc" "myapp-vpc" {
   cidr_block = var.vpc_cidr_block
@@ -106,7 +107,47 @@ resource "aws_instance" "myapp-server" {
   associate_public_ip_address = true
   key_name = aws_key_pair.ssh-key.key_name
 
-  user_data = file("entry-scripts.sh")
+# user_data is highly recommended when available  to execute script on instance 
+
+# user_data = file("entry-script.sh")
+
+# This connection make is possible to connect to our newly provision ec2 so we can excute or cmds.
+connection {
+  type = "ssh"
+  host = self.public_ip
+  user = "ec2-user"
+  private_key = file(var.private_key_location)
+}
+
+ provisioner "remote-exec" {
+  inline = [ "export ENV=dev",
+          "mkdir newdir"
+   ]
+   
+ }
+
+# This Provisioner will copy the file  from LOCAL source and copy it into destination ec2 instance directory ready to be excute
+provisioner "file" {
+  source = "entry-script.sh"
+  destination = "/home/ec2-user/entry-script-on-ec2.sh"
+}
+
+# This provisioner will then execute the  file in the home of our ec2 instance
+//  provisioner "remote-exec" {
+//   inline = [ "/home/ec2-user/entry-script-on-ec2.sh" ]
+//  }
+
+# This provisioer can also excute tour shell script in the ec2 instance, by providing the path using (script) in the project
+ provisioner "remote-exec" {
+  script = "entry-script.sh"
+   
+ }
+
+# This Provisioner will exceute cmd locally
+ provisioner "local-exec" {
+  command = "echo ${self.public_ip} > output.txt"
+   
+ }
 
   # user_data = <<EOF
   #             #!bin/bash
